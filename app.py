@@ -5,6 +5,7 @@ import numpy as np
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 import os
+import json
 
 app = Flask(__name__)
 
@@ -62,6 +63,52 @@ def search_vectors(query, top_k=10):
     
     return results
 
+def get_surrounding_messages(line_number, source_file, context_lines=10):
+    """Get previous and next context_lines messages from the source file."""
+    try:
+        # Find the chunked file for this source file
+        chunked_file = f"discord_jsons/{source_file}_chunks.json"
+        if not os.path.exists(chunked_file):
+            return []
+        
+        with open(chunked_file, 'r') as f:
+            data = json.load(f)
+        
+        # Find all messages in the file
+        all_messages = []
+        for item in data:
+            if 'messages' in item and isinstance(item['messages'], list):
+                all_messages.extend(item['messages'])
+            else:
+                all_messages.append(item)
+        
+        # Find the index of the target message
+        target_index = -1
+        for i, msg in enumerate(all_messages):
+            if msg.get('line_number') == line_number:
+                target_index = i
+                break
+        
+        if target_index == -1:
+            return []
+        
+        # Get surrounding messages
+        start_index = max(0, target_index - context_lines)
+        end_index = min(len(all_messages), target_index + context_lines + 1)
+        
+        surrounding_messages = all_messages[start_index:end_index]
+        
+        # Add context information
+        for msg in surrounding_messages:
+            msg['context_line'] = msg.get('line_number', 0)
+            msg['is_target'] = (msg.get('line_number') == line_number)
+        
+        return surrounding_messages
+        
+    except Exception as e:
+        print(f"Error getting surrounding messages: {e}")
+        return []
+
 @app.route('/')
 def index():
     """Render the main page."""
@@ -92,6 +139,12 @@ def search():
         })
     
     return jsonify({'results': formatted_results})
+
+@app.route('/message/<int:line_number>/<string:source_file>')
+def message_detail(line_number, source_file):
+    """Get surrounding messages for a specific line."""
+    surrounding_messages = get_surrounding_messages(line_number, source_file, context_lines=10)
+    return jsonify({'messages': surrounding_messages})
 
 if __name__ == '__main__':
     # Load the vector database when the app starts

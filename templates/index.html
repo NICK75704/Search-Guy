@@ -63,6 +63,11 @@
             padding: 20px;
             margin-bottom: 15px;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            cursor: pointer;
+        }
+        .result-item:hover {
+            background-color: #e9f7fe;
+            border-color: #3498db;
         }
         .result-score {
             font-weight: bold;
@@ -107,6 +112,41 @@
             border-radius: 5px;
             border: 1px solid #ddd;
         }
+        .message-detail {
+            display: none;
+            background-color: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 5px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+        .message-detail h3 {
+            margin-top: 0;
+            color: #2c3e50;
+        }
+        .message-content {
+            padding: 10px;
+            margin: 10px 0;
+            background-color: white;
+            border-radius: 5px;
+            border-left: 4px solid #3498db;
+        }
+        .target-message {
+            border-left: 4px solid #e74c3c;
+            background-color: #fff5f5;
+        }
+        .message-line {
+            font-size: 14px;
+            color: #6c757d;
+        }
+        .message-user {
+            font-weight: bold;
+            color: #3498db;
+        }
+        .message-timestamp {
+            font-size: 12px;
+            color: #95a5a6;
+        }
     </style>
 </head>
 <body>
@@ -130,6 +170,11 @@
         
         <div id="results" class="results-container">
             <p style="text-align: center; color: #6c757d;">Enter a search query to find similar messages</p>
+        </div>
+        
+        <div id="message-detail" class="message-detail">
+            <h3>Surrounding Messages</h3>
+            <div id="detail-content"></div>
         </div>
     </div>
 
@@ -186,7 +231,7 @@
             let html = '<h2>Search Results</h2>';
             results.forEach((result, index) => {
                 html += `
-                <div class="result-item">
+                <div class="result-item" onclick="showMessageDetail(${result.line_number}, '${result.source_file}')">
                     <div class="result-score">Score: ${result.score.toFixed(4)}</div>
                     <div class="result-content">${escapeHtml(result.content)}</div>
                     <div class="result-meta">
@@ -202,6 +247,54 @@
             resultsDiv.innerHTML = html;
         }
 
+        function showMessageDetail(line_number, source_file) {
+            // Show loading
+            const detailDiv = document.getElementById('message-detail');
+            const contentDiv = document.getElementById('detail-content');
+            contentDiv.innerHTML = '<div class="loading">Loading surrounding messages...</div>';
+            detailDiv.style.display = 'block';
+            
+            // Fetch surrounding messages
+            fetch(`/message/${line_number}/${source_file}`)
+            .then(response => response.json())
+            .then(data => {
+                displayMessageDetail(data.messages);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                contentDiv.innerHTML = '<div class="error">Error loading messages. Please try again.</div>';
+            });
+        }
+
+        function displayMessageDetail(messages) {
+            const contentDiv = document.getElementById('detail-content');
+            
+            if (!messages || messages.length === 0) {
+                contentDiv.innerHTML = '<div class="no-results">No messages found</div>';
+                return;
+            }
+            
+            let html = '';
+            messages.forEach(msg => {
+                const isTarget = msg.is_target || false;
+                const timestamp = msg.timestamp || '';
+                const username = msg.username || 'Unknown User';
+                const content = msg.content || '';
+                const line = msg.context_line || '';
+                
+                html += `
+                <div class="message-content ${isTarget ? 'target-message' : ''}">
+                    <div class="message-user">${escapeHtml(username)}</div>
+                    <div class="message-timestamp">${escapeHtml(timestamp)}</div>
+                    <div class="message-line">Line ${line}</div>
+                    <div>${escapeHtml(content)}</div>
+                </div>
+                `;
+            });
+            
+            contentDiv.innerHTML = html;
+        }
+
         function escapeHtml(unsafe) {
             if (typeof unsafe !== 'string') return '';
             return unsafe
@@ -213,4 +306,5 @@
         }
     </script>
 </body>
+</html>
 </html>

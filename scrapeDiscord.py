@@ -4,7 +4,7 @@ import os
 import json
 from datetime import timezone
 
-TOKEN = "MTQ3MzQ5NDc1NDE0NTczMDU4MA.GMDvn9.t3BA6jOhGermrIA-bYWO6kg-hHmNvg-Y9EgG0o"
+TOKEN = "BOT_KEY"
 EXPORT_DIR = "discord_exports"
 STATE_FILE = "export_state.json"
 

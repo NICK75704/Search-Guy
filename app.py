@@ -60,7 +60,6 @@ def search_vectors(query, vector_database, top_k=10):
     # Get top k indices
     top_indices = np.argsort(similarities)[::-1][:top_k]
     
-
     # Get top k results with scores (convert numpy types to Python native types)
     results = []
     for idx in top_indices:
@@ -77,9 +76,6 @@ def search_vectors(query, vector_database, top_k=10):
                     metadata[key] = float(value)
             
             results.append({
-
-
-
                 'score': score,
                 'metadata': metadata,
                 'content': metadata['original_message']['content']
@@ -139,28 +135,23 @@ def index():
 @app.route('/search', methods=['POST'])
 def search():
     if not vector_database:
-
         return jsonify({'error': 'Database not loaded'}), 500
     
     data = request.get_json()
-
     query = data.get('query', '')
     
     if not query:
         return jsonify({'error': 'Query is required'}), 400
     
     try:
-
         results = search_vectors(query, vector_database)
         return jsonify({'results': results})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
 @app.route('/context', methods=['POST'])
-
 def get_context():
     if not vector_database:
-
         return jsonify({'error': 'Database not loaded'}), 500
     
     data = request.get_json()

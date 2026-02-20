@@ -318,19 +318,17 @@
                         // Add selected class to clicked row
                         this.classList.add('selected');
                         
-                        // Get the index
+                        // Get the selected result
                         const index = this.getAttribute('data-index');
                         selectedResult = results[index];
                         
-                        // Show context
-                        showContext(selectedResult);
+                        // Get context for selected result
+                        getContextForSelectedResult(selectedResult);
                     });
                 });
             }
             
-            function showContext(result) {
-                if (!result) return;
-                
+            function getContextForSelectedResult(result) {
                 // Make API call to get context
                 fetch('/context', {
                     method: 'POST',

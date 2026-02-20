@@ -60,14 +60,29 @@ def search_vectors(query, vector_database, top_k=10):
     # Get top k indices
     top_indices = np.argsort(similarities)[::-1][:top_k]
     
-    # Get top k results with scores
+
+    # Get top k results with scores (convert numpy types to Python native types)
     results = []
     for idx in top_indices:
         if similarities[idx] > 0:  # Only include results with some similarity
+            # Convert numpy types to Python native types
+            score = float(similarities[idx])
+            metadata = vector_database['message_metadata'][idx]
+            
+            # Convert any numpy types in metadata
+            for key, value in metadata.items():
+                if isinstance(value, np.integer):
+                    metadata[key] = int(value)
+                elif isinstance(value, np.floating):
+                    metadata[key] = float(value)
+            
             results.append({
-                'score': similarities[idx],
-                'metadata': vector_database['message_metadata'][idx],
-                'content': vector_database['message_metadata'][idx]['original_message']['content']
+
+
+
+                'score': score,
+                'metadata': metadata,
+                'content': metadata['original_message']['content']
             })
     
     return results
@@ -124,24 +139,29 @@ def index():
 @app.route('/search', methods=['POST'])
 def search():
     if not vector_database:
-        return jsonify({'error': 'Vector database not loaded'}), 500
+
+        return jsonify({'error': 'Database not loaded'}), 500
     
     data = request.get_json()
-    query = data.get('query', '').strip()
+
+    query = data.get('query', '')
     
     if not query:
         return jsonify({'error': 'Query is required'}), 400
     
     try:
-        results = search_vectors(query, vector_database, top_k=10)
+
+        results = search_vectors(query, vector_database)
         return jsonify({'results': results})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
 @app.route('/context', methods=['POST'])
-def context():
+
+def get_context():
     if not vector_database:
-        return jsonify({'error': 'Vector database not loaded'}), 500
+
+        return jsonify({'error': 'Database not loaded'}), 500
     
     data = request.get_json()
     source_file = data.get('source_file', '')

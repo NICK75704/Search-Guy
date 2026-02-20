@@ -223,7 +223,7 @@
                 // Show loading
                 loading.style.display = 'block';
                 resultsList.innerHTML = '';
-                statusText.textContent = 'Searching...';
+                statusText.textContent = 'Searching. ..';
                 
                 // Make API call
                 fetch('/search', {
@@ -288,7 +288,7 @@
                 
                 results.forEach((result, index) => {
                     const content = result.content.length > 100 
-                        ? result.content.substring(0, 100) + '...' 
+                        ? result.content.substring(0, 100) + '. .' 
                         : result.content;
                     
                     const timestamp = result.metadata.timestamp || 'Unknown';

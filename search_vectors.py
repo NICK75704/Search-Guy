@@ -84,11 +84,14 @@ def display_results(results):
     
     for i, result in enumerate(results, 1):
         print(f"\n{i}. Score: {result['score']:.4f}")
-        print(f"   Content: {result['content'][:100]}...")
+        print(f"   Content: {result['content']}...")
         print(f"   Username: {result['metadata']['username']}")
         print(f"   Timestamp: {result['metadata']['timestamp']}")
         print(f"   Source File: {result['metadata']['source_file']}")
         print(f"   Line Number: {result['metadata']['line_number']}")
+    
+    def get_surrounding_messages(result):
+        print(results['line_number'])
 
 def main():
     # Load vector database

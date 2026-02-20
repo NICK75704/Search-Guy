@@ -1,310 +1,374 @@
-<!-- templates/index.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vector Search Interface</title>
+    <title>Vector Search Application</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
-            background-color: #f5f5f5;
-            color: #333;
+            background-color: #f8f9fa;
+            padding-bottom: 30px;
         }
-        .container {
+        .header {
+            background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+            color: white;
+            padding: 20px 0;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .search-container {
             background-color: white;
             border-radius: 10px;
-            padding: 30px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        }
-        h1 {
-            color: #2c3e50;
-            text-align: center;
+            padding: 25px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
             margin-bottom: 30px;
-        }
-        .search-box {
-            display: flex;
-            margin-bottom: 30px;
-        }
-        #query-input {
-            flex: 1;
-            padding: 15px;
-            border: 2px solid #ddd;
-            border-radius: 5px 0 0 5px;
-            font-size: 16px;
-            outline: none;
-        }
-        #query-input:focus {
-            border-color: #3498db;
-        }
-        #search-button {
-            padding: 15px 25px;
-            background-color: #3498db;
-            color: white;
-            border: none;
-            border-radius: 0 5px 5px 0;
-            cursor: pointer;
-            font-size: 16px;
-            font-weight: bold;
-        }
-        #search-button:hover {
-            background-color: #2980b9;
         }
         .results-container {
-            margin-top: 30px;
+            background-color: white;
+            border-radius: 10px;
+            padding: 25px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
         }
-        .result-item {
-            background-color: #f8f9fa;
-            border: 1px solid #e9ecef;
-            border-radius: 5px;
-            padding: 20px;
-            margin-bottom: 15px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        .context-container {
+            background-color: white;
+            border-radius: 10px;
+            padding: 25px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        .result-row {
             cursor: pointer;
+            transition: all 0.2s;
         }
-        .result-item:hover {
+        .result-row:hover {
             background-color: #e9f7fe;
-            border-color: #3498db;
+            transform: translateY(-2px);
         }
-        .result-score {
-            font-weight: bold;
-            color: #e74c3c;
-            margin-bottom: 10px;
+        .result-row.selected {
+            background-color: #d1e7ff;
+            border-left: 4px solid #0d6efd;
         }
-        .result-content {
-            margin-bottom: 10px;
-            line-height: 1.5;
+        .context-text {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 15px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
         }
-        .result-meta {
-            font-size: 14px;
+        .status-bar {
+            background-color: #e9ecef;
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 10px;
+        }
+        .search-icon {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
             color: #6c757d;
         }
-        .result-meta span {
-            margin-right: 15px;
-        }
-        .loading {
-            text-align: center;
-            padding: 20px;
-            color: #6c757d;
-        }
-        .error {
-            color: #e74c3c;
-            text-align: center;
-            padding: 20px;
+        .result-badge {
+            font-size: 0.8em;
         }
         .no-results {
             text-align: center;
-            padding: 20px;
+            padding: 30px;
             color: #6c757d;
         }
-        .top-k-control {
-            margin-bottom: 20px;
-        }
-        .top-k-control label {
-            margin-right: 10px;
-            font-weight: bold;
-        }
-        .top-k-control select {
-            padding: 8px;
-            border-radius: 5px;
-            border: 1px solid #ddd;
-        }
-        .message-detail {
+        .loading {
             display: none;
-            background-color: #f8f9fa;
-            border: 1px solid #e9ecef;
-            border-radius: 5px;
-            padding: 20px;
-            margin-top: 20px;
         }
-        .message-detail h3 {
-            margin-top: 0;
-            color: #2c3e50;
+        .loading-spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-radius: 50%;
+            border-top: 4px solid #0d6efd;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
         }
-        .message-content {
-            padding: 10px;
-            margin: 10px 0;
-            background-color: white;
-            border-radius: 5px;
-            border-left: 4px solid #3498db;
-        }
-        .target-message {
-            border-left: 4px solid #e74c3c;
-            background-color: #fff5f5;
-        }
-        .message-line {
-            font-size: 14px;
-            color: #6c757d;
-        }
-        .message-user {
-            font-weight: bold;
-            color: #3498db;
-        }
-        .message-timestamp {
-            font-size: 12px;
-            color: #95a5a6;
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Vector Search Interface</h1>
-        
-        <div class="top-k-control">
-            <label for="top-k">Top Results:</label>
-            <select id="top-k">
-                <option value="5">5</option>
-                <option value="10" selected>10</option>
-                <option value="20">20</option>
-                <option value="50">50</option>
-            </select>
-        </div>
-        
-        <div class="search-box">
-            <input type="text" id="query-input" placeholder="Enter your search query...">
-            <button id="search-button">Search</button>
-        </div>
-        
-        <div id="results" class="results-container">
-            <p style="text-align: center; color: #6c757d;">Enter a search query to find similar messages</p>
-        </div>
-        
-        <div id="message-detail" class="message-detail">
-            <h3>Surrounding Messages</h3>
-            <div id="detail-content"></div>
+    <div class="header">
+        <div class="container">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h1><i class="fas fa-search"></i> Vector Search Application</h1>
+                    <p class="lead">Search through your vector database and view surrounding code context</p>
+                </div>
+                <div class="col-md-4 text-md-end">
+                    <div class="d-flex justify-content-end">
+                        <div class="me-3">
+                            <i class="fas fa-database fa-2x"></i>
+                            <span class="d-block">Database Loaded</span>
+                        </div>
+                        <div>
+                            <i class="fas fa-bolt fa-2x"></i>
+                            <span class="d-block">Real-time Search</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
-    <script>
-        document.getElementById('search-button').addEventListener('click', performSearch);
-        document.getElementById('query-input').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                performSearch();
-            }
-        });
-
-        function performSearch() {
-            const query = document.getElementById('query-input').value.trim();
-            const topK = document.getElementById('top-k').value;
-            
-            if (!query) {
-                alert('Please enter a search query');
-                return;
-            }
-            
-            // Show loading
-            const resultsDiv = document.getElementById('results');
-            resultsDiv.innerHTML = '<div class="loading">Searching...</div>';
-            
-            // Perform search
-            fetch('/search', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    query: query,
-                    top_k: topK
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                displayResults(data.results);
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                resultsDiv.innerHTML = '<div class="error">Error performing search. Please try again.</div>';
-            });
-        }
-
-        function displayResults(results) {
-            const resultsDiv = document.getElementById('results');
-            
-            if (!results || results.length === 0) {
-                resultsDiv.innerHTML = '<div class="no-results">No results found</div>';
-                return;
-            }
-            
-            let html = '<h2>Search Results</h2>';
-            results.forEach((result, index) => {
-                html += `
-                <div class="result-item" onclick="showMessageDetail(${result.line_number}, '${result.source_file}')">
-                    <div class="result-score">Score: ${result.score.toFixed(4)}</div>
-                    <div class="result-content">${escapeHtml(result.content)}</div>
-                    <div class="result-meta">
-                        <span><strong>User:</strong> ${escapeHtml(result.username)}</span>
-                        <span><strong>Time:</strong> ${escapeHtml(result.timestamp)}</span>
-                        <span><strong>File:</strong> ${escapeHtml(result.source_file)}</span>
-                        <span><strong>Line:</strong> ${result.line_number}</span>
+    <div class="container">
+        <div class="search-container">
+            <div class="row">
+                <div class="col-md-10">
+                    <div class="input-group mb-3">
+                        <input type="text" id="query-input" class="form-control form-control-lg" placeholder="Enter your search query...">
+                        <button class="btn btn-primary btn-lg" type="button" id="search-btn">
+                            <i class="fas fa-search"></i> Search
+                        </button>
                     </div>
                 </div>
+                <div class="col-md-2">
+                    <button class="btn btn-outline-secondary btn-lg w-100" id="clear-btn">
+                        <i class="fas fa-times"></i> Clear
+                    </button>
+                </div>
+            </div>
+            <div class="status-bar">
+                <span id="status-text">Ready</span>
+            </div>
+        </div>
+
+        <div class="results-container">
+            <h3><i class="fas fa-list"></i> Search Results</h3>
+            <div id="loading" class="loading">
+                <div class="loading-spinner"></div>
+                <p class="text-center mt-2">Searching...</p>
+            </div>
+            <div id="results-list">
+                <div class="no-results">
+                    <i class="fas fa-inbox fa-3x mb-3"></i>
+                    <p>Enter a search query to see results</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="context-container">
+            <h3><i class="fas fa-code"></i> Context Viewer</h3>
+            <div id="context-content">
+                <div class="text-center py-5">
+                    <i class="fas fa-file-code fa-3x mb-3"></i>
+                    <p>Select a result to view surrounding code context</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const queryInput = document.getElementById('query-input');
+            const searchBtn = document.getElementById('search-btn');
+            const clearBtn = document.getElementById('clear-btn');
+            const resultsList = document.getElementById('results-list');
+            const contextContent = document.getElementById('context-content');
+            const statusText = document.getElementById('status-text');
+            const loading = document.getElementById('loading');
+            
+            let selectedResult = null;
+            
+            // Search when button is clicked
+            searchBtn.addEventListener('click', performSearch);
+            
+            // Search when Enter is pressed
+            queryInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    performSearch();
+                }
+            });
+            
+            // Clear results
+            clearBtn.addEventListener('click', function() {
+                queryInput.value = '';
+                resultsList.innerHTML = `
+                    <div class="no-results">
+                        <i class="fas fa-inbox fa-3x mb-3"></i>
+                        <p>Enter a search query to see results</p>
+                    </div>
                 `;
+                contextContent.innerHTML = `
+                    <div class="text-center py-5">
+                        <i class="fas fa-file-code fa-3x mb-3"></i>
+                        <p>Select a result to view surrounding code context</p>
+                    </div>
+                `;
+                statusText.textContent = 'Ready';
+                selectedResult = null;
             });
             
-            resultsDiv.innerHTML = html;
-        }
-
-        function showMessageDetail(line_number, source_file) {
-            // Show loading
-            const detailDiv = document.getElementById('message-detail');
-            const contentDiv = document.getElementById('detail-content');
-            contentDiv.innerHTML = '<div class="loading">Loading surrounding messages...</div>';
-            detailDiv.style.display = 'block';
-            
-            // Fetch surrounding messages
-            fetch(`/message/${line_number}/${source_file}`)
-            .then(response => response.json())
-            .then(data => {
-                displayMessageDetail(data.messages);
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                contentDiv.innerHTML = '<div class="error">Error loading messages. Please try again.</div>';
-            });
-        }
-
-        function displayMessageDetail(messages) {
-            const contentDiv = document.getElementById('detail-content');
-            
-            if (!messages || messages.length === 0) {
-                contentDiv.innerHTML = '<div class="no-results">No messages found</div>';
-                return;
+            function performSearch() {
+                const query = queryInput.value.trim();
+                
+                if (!query) {
+                    statusText.textContent = 'Please enter a search query';
+                    return;
+                }
+                
+                // Show loading
+                loading.style.display = 'block';
+                resultsList.innerHTML = '';
+                statusText.textContent = 'Searching...';
+                
+                // Make API call
+                fetch('/search', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ query: query })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    loading.style.display = 'none';
+                    
+                    if (data.error) {
+                        statusText.textContent = 'Error: ' + data.error;
+                        resultsList.innerHTML = `
+                            <div class="alert alert-danger">
+                                <i class="fas fa-exclamation-triangle"></i> ${data.error}
+                            </div>
+                        `;
+                        return;
+                    }
+                    
+                    displayResults(data.results);
+                    statusText.textContent = `Found ${data.results.length} results`;
+                })
+                .catch(error => {
+                    loading.style.display = 'none';
+                    statusText.textContent = 'Network error occurred';
+                    resultsList.innerHTML = `
+                        <div class="alert alert-danger">
+                            <i class="fas fa-exclamation-triangle"></i> Network error occurred
+                        </div>
+                    `;
+                    console.error('Search error:', error);
+                });
             }
             
-            let html = '';
-            messages.forEach(msg => {
-                const isTarget = msg.is_target || false;
-                const timestamp = msg.timestamp || '';
-                const username = msg.username || 'Unknown User';
-                const content = msg.content || '';
-                const line = msg.context_line || '';
+            function displayResults(results) {
+                if (results.length === 0) {
+                    resultsList.innerHTML = `
+                        <div class="no-results">
+                            <i class="fas fa-search fa-3x mb-3"></i>
+                            <p>No results found for your query</p>
+                        </div>
+                    `;
+                    return;
+                }
                 
-                html += `
-                <div class="message-content ${isTarget ? 'target-message' : ''}">
-                    <div class="message-user">${escapeHtml(username)}</div>
-                    <div class="message-timestamp">${escapeHtml(timestamp)}</div>
-                    <div class="message-line">Line ${line}</div>
-                    <div>${escapeHtml(content)}</div>
-                </div>
-                `;
-            });
+                let resultsHTML = '<div class="table-responsive">';
+                resultsHTML += '<table class="table table-hover">';
+                resultsHTML += '<thead class="table-light">';
+                resultsHTML += '<tr>';
+                resultsHTML += '<th>Score</th>';
+                resultsHTML += '<th>Content</th>';
+                resultsHTML += '<th>Username</th>';
+                resultsHTML += '<th>File</th>';
+                resultsHTML += '<th>Line</th>';
+                resultsHTML += '</tr>';
+                resultsHTML += '</thead>';
+                resultsHTML += '<tbody>';
+                
+                results.forEach((result, index) => {
+                    const content = result.content.length > 100 
+                        ? result.content.substring(0, 100) + '...' 
+                        : result.content;
+                    
+                    const timestamp = result.metadata.timestamp || 'Unknown';
+                    const sourceFile = result.metadata.source_file || 'Unknown';
+                    const line = result.metadata.line_number || 'Unknown';
+                    
+                    resultsHTML += `<tr class="result-row" data-index="${index}">`;
+                    resultsHTML += `<td><span class="badge bg-primary">${result.score.toFixed(4)}</span></td>`;
+                    resultsHTML += `<td>${content}</td>`;
+                    resultsHTML += `<td>${result.metadata.username || 'Unknown'}</td>`;
+                    resultsHTML += `<td>${sourceFile}</td>`;
+                    resultsHTML += `<td>${line}</td>`;
+                    resultsHTML += '</tr>';
+                });
+                
+                resultsHTML += '</tbody></table></div>';
+                resultsList.innerHTML = resultsHTML;
+                
+                // Add click event to rows
+                document.querySelectorAll('.result-row').forEach(row => {
+                    row.addEventListener('click', function() {
+                        // Remove selected class from all rows
+                        document.querySelectorAll('.result-row').forEach(r => {
+                            r.classList.remove('selected');
+                        });
+                        
+                        // Add selected class to clicked row
+                        this.classList.add('selected');
+                        
+                        // Get the index
+                        const index = this.getAttribute('data-index');
+                        selectedResult = results[index];
+                        
+                        // Show context
+                        showContext(selectedResult);
+                    });
+                });
+            }
             
-            contentDiv.innerHTML = html;
-        }
-
-        function escapeHtml(unsafe) {
-            if (typeof unsafe !== 'string') return '';
-            return unsafe
-                .replace(/&/g, "&amp;")
-                .replace(/</g, "&lt;")
-                .replace(/>/g, "&gt;")
-                .replace(/"/g, "&quot;")
-                .replace(/'/g, "&#039;");
-        }
+            function showContext(result) {
+                if (!result) return;
+                
+                // Make API call to get context
+                fetch('/context', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        source_file: result.metadata.source_file,
+                        line_number: result.metadata.line_number
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        contextContent.innerHTML = `
+                            <div class="alert alert-danger">
+                                <i class="fas fa-exclamation-triangle"></i> ${data.error}
+                            </div>
+                        `;
+                        return;
+                    }
+                    
+                    contextContent.innerHTML = `
+                        <div class="context-text">
+                            ${data.context.replace(/\n/g, '<br>')}
+                        </div>
+                    `;
+                })
+                .catch(error => {
+                    contextContent.innerHTML = `
+                        <div class="alert alert-danger">
+                            <i class="fas fa-exclamation-triangle"></i> Error retrieving context
+                        </div>
+                    `;
+                    console.error('Context error:', error);
+                });
+            }
+        });
     </script>
 </body>
-</html>
 </html>

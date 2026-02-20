@@ -1,4 +1,3 @@
-# app.py
 from flask import Flask, render_template, request, jsonify
 import pickle
 import numpy as np
@@ -6,35 +5,45 @@ from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 import os
 import json
+from datetime import datetime
 
 app = Flask(__name__)
 
 # Global variable to store the vector database
 vector_database = None
-model = None
 
 def load_vector_database(file_path='vectors.pkl'):
-    """Load the vector database from pickle file."""
-    global vector_database, model
+    """
+    Load the vector database from pickle file.
     
+    Args:
+        file_path (str): Path to the pickle file containing vectors
+    
+    Returns:
+        dict: Vector database with embeddings, metadata, and model
+    """
     if not os.path.exists(file_path):
-        print(f"Error: Vector database file '{file_path}' not found.")
-        return False
+        raise FileNotFoundError(f"Vector database file '{file_path}' not found.")
     
-    try:
-        with open(file_path, 'rb') as f:
-            vector_database = pickle.load(f)
-        model = vector_database['model']
-        print(f"Loaded vector database with {len(vector_database['embeddings'])} embeddings")
-        return True
-    except Exception as e:
-        print(f"Error loading vector database: {e}")
-        return False
+    with open(file_path, 'rb') as f:
+        vector_database = pickle.load(f)
+    
+    return vector_database
 
-def search_vectors(query, top_k=10):
-    """Search for similar vectors to the query."""
-    if vector_database is None:
-        return []
+def search_vectors(query, vector_database, top_k=10):
+    """
+    Search for similar vectors to the query.
+    
+    Args:
+        query (str): Search query
+        vector_database (dict): Loaded vector database
+        top_k (int): Number of top results to return
+    
+    Returns:
+        list: Top k similar messages with scores
+    """
+    # Load the model used for vectorization
+    model = vector_database['model']
     
     # Create embedding for the query
     query_embedding = model.encode([query])
@@ -43,7 +52,7 @@ def search_vectors(query, top_k=10):
     embeddings = vector_database['embeddings']
     
     if len(embeddings) == 0:
-        return []
+        raise ValueError("No embeddings found in database")
     
     # Calculate cosine similarities
     similarities = cosine_similarity(query_embedding, embeddings)[0]
@@ -56,100 +65,93 @@ def search_vectors(query, top_k=10):
     for idx in top_indices:
         if similarities[idx] > 0:  # Only include results with some similarity
             results.append({
-                'score': float(similarities[idx]),
+                'score': similarities[idx],
                 'metadata': vector_database['message_metadata'][idx],
                 'content': vector_database['message_metadata'][idx]['original_message']['content']
             })
     
     return results
 
-def get_surrounding_messages(line_number, source_file, context_lines=10):
-    """Get previous and next context_lines messages from the source file."""
+def get_surrounding_context(source_file, line_number, context_lines=5):
+    """
+    Get surrounding lines from a source file.
+    
+    Args:
+        source_file (str): Path to the source file
+        line_number (int): Line number to get context for
+        context_lines (int): Number of lines before and after
+    
+    Returns:
+        str: Formatted context text
+    """
+    if not os.path.exists(source_file):
+        return f"Error: Source file '{source_file}' not found."
+    
     try:
-        # Find the chunked file for this source file
-        chunked_file = f"discord_jsons/{source_file}_chunks.json"
-        if not os.path.exists(chunked_file):
-            return []
+        with open(source_file, 'r', encoding='utf-8') as f:
+            lines = f.readlines()
         
-        with open(chunked_file, 'r') as f:
-            data = json.load(f)
+        # Calculate start and end line numbers
+        start_line = max(0, line_number - context_lines - 1)
+        end_line = min(len(lines), line_number + context_lines)
         
-        # Find all messages in the file
-        all_messages = []
-        for item in data:
-            if 'messages' in item and isinstance(item['messages'], list):
-                all_messages.extend(item['messages'])
-            else:
-                all_messages.append(item)
+        # Build context text
+        context_text = f"Surrounding context for line {line_number} in {source_file}:\n"
+        context_text += "-" * 80 + "\n"
         
-        # Find the index of the target message
-        target_index = -1
-        for i, msg in enumerate(all_messages):
-            if msg.get('line_number') == line_number:
-                target_index = i
-                break
-        
-        if target_index == -1:
-            return []
-        
-        # Get surrounding messages
-        start_index = max(0, target_index - context_lines)
-        end_index = min(len(all_messages), target_index + context_lines + 1)
-        
-        surrounding_messages = all_messages[start_index:end_index]
-        
-        # Add context information
-        for msg in surrounding_messages:
-            msg['context_line'] = msg.get('line_number', 0)
-            msg['is_target'] = (msg.get('line_number') == line_number)
-        
-        return surrounding_messages
+        # Print context lines
+        for i in range(start_line, end_line):
+            line_num = i + 1
+            marker = ">>> " if line_num == line_number else "   "
+            context_text += f"{line_num:4d}: {marker}{lines[i].rstrip()}\n"
+            
+        return context_text
         
     except Exception as e:
-        print(f"Error getting surrounding messages: {e}")
-        return []
+        return f"Error reading file: {e}"
+
+# Load database at startup
+try:
+    vector_database = load_vector_database('vectors.pkl')
+    print("Vector database loaded successfully")
+except Exception as e:
+    print(f"Failed to load vector database: {e}")
 
 @app.route('/')
 def index():
-    """Render the main page."""
     return render_template('index.html')
 
 @app.route('/search', methods=['POST'])
 def search():
-    """Handle search requests."""
+    if not vector_database:
+        return jsonify({'error': 'Vector database not loaded'}), 500
+    
     data = request.get_json()
-    query = data.get('query', '')
-    top_k = int(data.get('top_k', 10))
+    query = data.get('query', '').strip()
     
     if not query:
-        return jsonify({'error': 'No query provided'}), 400
+        return jsonify({'error': 'Query is required'}), 400
     
-    results = search_vectors(query, top_k)
-    
-    # Format results for JSON response
-    formatted_results = []
-    for result in results:
-        formatted_results.append({
-            'score': result['score'],
-            'content': result['content'],
-            'username': result['metadata']['username'],
-            'timestamp': result['metadata']['timestamp'],
-            'source_file': result['metadata']['source_file'],
-            'line_number': result['metadata']['line_number']
-        })
-    
-    return jsonify({'results': formatted_results})
+    try:
+        results = search_vectors(query, vector_database, top_k=10)
+        return jsonify({'results': results})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
-@app.route('/message/<int:line_number>/<string:source_file>')
-def message_detail(line_number, source_file):
-    """Get surrounding messages for a specific line."""
-    surrounding_messages = get_surrounding_messages(line_number, source_file, context_lines=10)
-    return jsonify({'messages': surrounding_messages})
+@app.route('/context', methods=['POST'])
+def context():
+    if not vector_database:
+        return jsonify({'error': 'Vector database not loaded'}), 500
+    
+    data = request.get_json()
+    source_file = data.get('source_file', '')
+    line_number = data.get('line_number', 0)
+    
+    if not source_file or line_number == 0:
+        return jsonify({'error': 'Source file and line number are required'}), 400
+    
+    context_text = get_surrounding_context(source_file, line_number)
+    return jsonify({'context': context_text})
 
 if __name__ == '__main__':
-    # Load the vector database when the app starts
-    if load_vector_database('vectors.pkl'):
-        print("Vector database loaded successfully")
-        app.run(debug=True, host='0.0.0.0', port=5000)
-    else:
-        print("Failed to load vector database. Please ensure vectors.pkl exists.")
+    app.run(debug=True, host='0.0.0.0', port=5000)

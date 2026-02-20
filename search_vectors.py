@@ -84,14 +84,48 @@ def display_results(results):
     
     for i, result in enumerate(results, 1):
         print(f"\n{i}. Score: {result['score']:.4f}")
-        print(f"   Content: {result['content']}...")
+        print(f"   Content: {result['content']}")
         print(f"   Username: {result['metadata']['username']}")
         print(f"   Timestamp: {result['metadata']['timestamp']}")
         print(f"   Source File: {result['metadata']['source_file']}")
         print(f"   Line Number: {result['metadata']['line_number']}")
     
-    def get_surrounding_messages(result):
-        print(results['line_number'])
+
+def get_surrounding_messages(result, context_lines=5):
+    """
+    Display surrounding lines from the source file.
+    
+    Args:
+        result (dict): Search result containing metadata
+        context_lines (int): Number of lines to show before and after
+    """
+    source_file = result['metadata']['source_file']
+    line_number = result['metadata']['line_number']
+    
+    if not os.path.exists(source_file):
+        print(f"Error: Source file '{source_file}' not found.")
+        return
+    
+    try:
+        with open(source_file, 'r', encoding='utf-8') as f:
+            lines = f.readlines()
+        
+        # Calculate start and end line numbers
+        start_line = max(0, line_number - context_lines - 1)
+        end_line = min(len(lines), line_number + context_lines)
+        
+        print(f"\nSurrounding context for line {line_number} in {source_file}:")
+        print("-" * 80)
+        
+        # Print context lines
+        for i in range(start_line, end_line):
+            line_num = i + 1
+            marker = ">>> " if line_num == line_number else "    "
+            print(f"{line_num:4d}: {marker}{lines[i].rstrip()}")
+            
+    except Exception as e:
+        print(f"Error reading file: {e}")
+
 
 def main():
     # Load vector database
@@ -116,6 +150,19 @@ def main():
         print(f"\nSearching for: '{query}'")
         results = search_vectors(query, vector_database, top_k=10)
         display_results(results)
+        
+        # Ask if user wants to see surrounding context
+        if results:
+            show_context = input("\nShow surrounding context for any result? (y/n): ").strip().lower()
+            if show_context in ['y', 'yes']:
+                try:
+                    result_num = int(input("Enter result number: ")) - 1
+                    if 0 <= result_num < len(results):
+                        get_surrounding_messages(results[result_num])
+                    else:
+                        print("Invalid result number.")
+                except ValueError:
+                    print("Please enter a valid number.")
 
 if __name__ == "__main__":
     main()

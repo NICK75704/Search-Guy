@@ -157,4 +157,5 @@ def get_context():
         return jsonify({'error': f'Error reading file: {str(e)}'}), 500
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    # Change to listen on all interfaces to make it accessible from other machines
+    app.run(debug=True, host='0.0.0.0')

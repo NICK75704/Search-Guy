@@ -99,7 +99,7 @@ def get_surrounding_messages(result, context_lines=5):
         result (dict): Search result containing metadata
         context_lines (int): Number of lines to show before and after
     """
-    source_file = 'discord_exports/' + result['metadata']['source_file']
+    source_file = 'discord_exports/KSU\ Motorsports/' + result['metadata']['source_file']
     line_number = result['metadata']['line_number']
     
     if not os.path.exists(source_file):

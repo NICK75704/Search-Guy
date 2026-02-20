@@ -72,7 +72,7 @@ def search_vectors(query, vector_database, top_k=10):
         for idx in top_indices:
             if similarities[idx] > 0:  # Only include results with some similarity
                 results.append({
-                    'score': similarities[idx],
+                    'score': float(similarities[idx]),  # Convert to Python float
                     'metadata': vector_database['message_metadata'][idx],
                     'content': vector_database['message_metadata'][idx]['original_message']['content']
                 })

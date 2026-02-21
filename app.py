@@ -115,14 +115,19 @@ def search():
         # Format results for JSON response
         formatted_results = []
         for result in results:
-            formatted_results.append({
+            formatted_result = {
                 'score': result['score'],
                 'content': result['content'],
                 'username': result['metadata']['username'],
                 'timestamp': result['metadata']['timestamp'],
                 'source_file': result['metadata']['source_file'],
                 'line_number': result['metadata']['line_number']
-            })
+            }
+            # Add Discord link information if available
+            if 'discord_info' in result['metadata']:
+                discord_info = result['metadata']['discord_info']
+                formatted_result['discord_link'] = f"https://discord.com/channels/{discord_info['guild_id']}/{discord_info['channel_id']}/{discord_info['message_id']}"
+            formatted_results.append(formatted_result)
         
         print(f"Found {len(formatted_results)} results")
         return jsonify({'results': formatted_results})

@@ -31,6 +31,16 @@ def chunk_lines_to_json(input_file_path, output_file_path=None):
     # Get the filename without path
     filename = os.path.basename(input_file_path)
     
+    # Load metadata if it exists
+    metadata_path = input_file_path.replace('.txt', '_metadata.json')
+    metadata_map = {}
+    if os.path.exists(metadata_path):
+        try:
+            with open(metadata_path, 'r', encoding='utf-8') as mf:
+                metadata_map = json.load(mf)
+        except Exception as e:
+            print(f"Warning: Could not load metadata from {metadata_path}: {e}")
+    
     # Read all lines from the input file
     with open(input_file_path, 'r', encoding='utf-8') as file:
         lines = file.readlines()
@@ -57,6 +67,9 @@ def chunk_lines_to_json(input_file_path, output_file_path=None):
                     "content": content,
                     "source_file": filename
                 }
+                # Add Discord IDs if available in metadata
+                if str(line_num) in metadata_map:
+                    message_obj["discord_info"] = metadata_map[str(line_num)]
                 messages.append(message_obj)
             except ValueError as e:
                 print(f"Warning: Could not parse timestamp in line {line_num}: {e}")
@@ -69,6 +82,9 @@ def chunk_lines_to_json(input_file_path, output_file_path=None):
                 "content": line,
                 "source_file": filename
             }
+            # Add Discord IDs if available in metadata
+            if str(line_num) in metadata_map:
+                message_obj["discord_info"] = metadata_map[str(line_num)]
             messages.append(message_obj)
     
     # Determine output file path if not provided

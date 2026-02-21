@@ -69,13 +69,17 @@ def create_vectors(messages, model_name='all-mpnet-base-v2', output_path='vector
         content = msg.get('content', '')
         if content:
             message_contents.append(content)
-            message_metadata.append({
+            metadata_entry = {
                 'line_number': msg.get('line_number'),
                 'timestamp': msg.get('timestamp'),
                 'username': msg.get('username'),
                 'source_file': msg.get('source_file'),
                 'original_message': msg
-            })
+            }
+            # Include discord_info if available
+            if 'discord_info' in msg:
+                metadata_entry['discord_info'] = msg['discord_info']
+            message_metadata.append(metadata_entry)
     
     print(f"Vectorizing {len(message_contents)} messages...")
     

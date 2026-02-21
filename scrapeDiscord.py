@@ -60,11 +60,25 @@ async def on_ready():
                 guild_dir,
                 f"{sanitize_filename(channel.name)}.txt"
             )
+            
+            metadata_filename = os.path.join(
+                guild_dir,
+                f"{sanitize_filename(channel.name)}_metadata.json"
+            )
 
             print(f"Updating #{channel.name}")
 
             new_last_id = last_id
             message_count = 0
+            
+            # Load existing metadata
+            metadata_map = {}
+            if os.path.exists(metadata_filename):
+                try:
+                    with open(metadata_filename, "r", encoding="utf-8") as mf:
+                        metadata_map = json.load(mf)
+                except:
+                    metadata_map = {}
 
             with open(filename, "a", encoding="utf-8") as f:
 
@@ -76,19 +90,31 @@ async def on_ready():
                 if last_id:
                     history_kwargs["after"] = discord.Object(id=int(last_id))
 
+                line_count = sum(1 for _ in open(filename, "rb")) if os.path.exists(filename) else 0
+
                 async for message in channel.history(**history_kwargs):
                     timestamp = message.created_at.astimezone(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
                     author = f"{message.author.name}#{message.author.discriminator}"
                     content = message.content.replace("\n", " ")
 
                     f.write(f"[{timestamp}] {author}: {content}\n")
+                    
+                    # Store metadata for this line
+                    line_count += 1
+                    metadata_map[str(line_count)] = {
+                        "guild_id": guild.id,
+                        "channel_id": channel.id,
+                        "message_id": message.id
+                    }
 
                     if message.attachments:
                         for attachment in message.attachments:
                             f.write(f"    [Attachment] {attachment.url}\n")
+                            line_count += 1
 
                     if message.embeds:
                         f.write("    [Embed]\n")
+                        line_count += 1
 
                     new_last_id = message.id
                     message_count += 1
@@ -96,6 +122,9 @@ async def on_ready():
             if message_count > 0:
                 state[channel_key] = str(new_last_id)
                 save_state(state)
+                # Save metadata
+                with open(metadata_filename, "w", encoding="utf-8") as mf:
+                    json.dump(metadata_map, mf, indent=2)
                 print(f"  Added {message_count} new messages")
             else:
                 print("  No new messages")

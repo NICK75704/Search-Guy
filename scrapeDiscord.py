@@ -3,6 +3,7 @@ import asyncio
 import os
 import json
 from datetime import timezone
+import time
 
 TOKEN = "BOT_KEY"
 EXPORT_DIR = "discord_exports"
@@ -30,6 +31,32 @@ def load_state():
 def save_state(state):
     with open(STATE_FILE, "w") as f:
         json.dump(state, f, indent=2)
+
+
+async def safe_fetch_history(channel, **kwargs):
+    """Safely fetch message history with rate limit handling"""
+    max_retries = 5
+    retry_delay = 1
+    
+    for attempt in range(max_retries):
+        try:
+            async for message in channel.history(**kwargs):
+                yield message
+            return  # Success, exit the retry loop
+        except discord.RateLimited as e:
+            print(f"Rate limited! Waiting {retry_delay} seconds...")
+            await asyncio.sleep(retry_delay)
+            retry_delay *= 2  # Exponential backoff
+        except discord.Forbidden:
+            print(f"Access forbidden for channel {channel.name}")
+            return
+        except Exception as e:
+            print(f"Unexpected error fetching history: {e}")
+            if attempt < max_retries - 1:
+                await asyncio.sleep(retry_delay)
+                retry_delay *= 2
+            else:
+                raise
 
 
 @client.event
@@ -76,22 +103,30 @@ async def on_ready():
                 if last_id:
                     history_kwargs["after"] = discord.Object(id=int(last_id))
 
-                async for message in channel.history(**history_kwargs):
-                    timestamp = message.created_at.astimezone(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
-                    author = f"{message.author.name}#{message.author.discriminator}"
-                    content = message.content.replace("\n", " ")
+                try:
+                    async for message in safe_fetch_history(channel, **history_kwargs):
+                        timestamp = message.created_at.astimezone(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+                        author = f"{message.author.name}#{message.author.discriminator}"
+                        content = message.content.replace("\n", " ")
 
-                    f.write(f"[{timestamp}] {author}: {content}\n")
+                        f.write(f"[{timestamp}] {author}: {content}\n")
 
-                    if message.attachments:
-                        for attachment in message.attachments:
-                            f.write(f"    [Attachment] {attachment.url}\n")
+                        if message.attachments:
+                            for attachment in message.attachments:
+                                f.write(f"    [Attachment] {attachment.url}\n")
 
-                    if message.embeds:
-                        f.write("    [Embed]\n")
+                        if message.embeds:
+                            f.write("    [Embed]\n")
 
-                    new_last_id = message.id
-                    message_count += 1
+                        new_last_id = message.id
+                        message_count += 1
+                        
+                        # Add a small delay between messages to be respectful
+                        await asyncio.sleep(0.05)
+
+                except Exception as e:
+                    print(f"Error fetching messages from {channel.name}: {e}")
+                    continue
 
             if message_count > 0:
                 state[channel_key] = str(new_last_id)
@@ -100,7 +135,8 @@ async def on_ready():
             else:
                 print("  No new messages")
 
-            await asyncio.sleep(0.5)  # polite delay
+            # Polite delay between channels
+            await asyncio.sleep(1)
 
     print("\nIncremental update complete.")
     await client.close()

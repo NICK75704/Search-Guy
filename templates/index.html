@@ -119,6 +119,15 @@
             font-size: 0.9rem;
         }
         
+        #sort-by {
+            padding: 8px 12px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+            font-size: 0.9rem;
+            background-color: white;
+            cursor: pointer;
+        }
+        
         .results-container {
             margin-top: 25px;
         }
@@ -324,6 +333,15 @@
                     <label for="top-k-input">Top Results:</label>
                     <input type="number" id="top-k-input" value="10" min="1" max="50">
                 </div>
+                <div class="control-group">
+                    <label for="sort-by">Sort By:</label>
+                    <select id="sort-by">
+                        <option value="score">Relevance Score</option>
+                        <option value="username">Username</option>
+                        <option value="timestamp">Time (Newest)</option>
+                        <option value="timestamp-oldest">Time (Oldest)</option>
+                    </select>
+                </div>
             </div>
         </div>
         
@@ -356,11 +374,14 @@
             const searchInput = document.getElementById('search-input');
             const searchButton = document.getElementById('search-button');
             const topKInput = document.getElementById('top-k-input');
+            const sortBySelect = document.getElementById('sort-by');
             const resultsList = document.getElementById('results-list');
             const resultsCount = document.getElementById('results-count');
             const contextModal = document.getElementById('context-modal');
             const contextLines = document.getElementById('context-lines');
             const closeBtn = document.querySelector('.close-btn');
+            
+            let currentResults = [];  // Store current results for sorting
             
             // Close modal when clicking the close button
             closeBtn.addEventListener('click', function() {
@@ -373,6 +394,32 @@
                     contextModal.style.display = 'none';
                 }
             });
+            
+            // Sort results function
+            function sortResults(results, sortBy) {
+                const sorted = [...results];  // Create a copy to avoid mutating original
+                
+                switch(sortBy) {
+                    case 'score':
+                        sorted.sort((a, b) => b.score - a.score);
+                        break;
+                    case 'username':
+                        sorted.sort((a, b) => a.username.localeCompare(b.username));
+                        break;
+                    case 'timestamp':
+                        // Newest first
+                        sorted.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+                        break;
+                    case 'timestamp-oldest':
+                        // Oldest first
+                        sorted.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+                        break;
+                    default:
+                        sorted.sort((a, b) => b.score - a.score);
+                }
+                
+                return sorted;
+            }
             
             // Search function
             function performSearch() {
@@ -410,7 +457,10 @@
                         return;
                     }
                     
-                    displayResults(data.results);
+                    currentResults = data.results;
+                    const sortBy = sortBySelect.value;
+                    const sortedResults = sortResults(currentResults, sortBy);
+                    displayResults(sortedResults);
                 })
                 .catch(error => {
                     console.error('Error:', error);
@@ -520,6 +570,14 @@
             searchInput.addEventListener('keypress', function(e) {
                 if (e.key === 'Enter') {
                     performSearch();
+                }
+            });
+            
+            // Handle sort change - re-sort and display current results
+            sortBySelect.addEventListener('change', function() {
+                if (currentResults.length > 0) {
+                    const sortedResults = sortResults(currentResults, this.value);
+                    displayResults(sortedResults);
                 }
             });
         });

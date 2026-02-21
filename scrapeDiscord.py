@@ -109,7 +109,7 @@ async def on_ready():
                         author = f"{message.author.name}#{message.author.discriminator}"
                         content = message.content.replace("\n", " ")
 
-                        f.write(f"[{timestamp}] {author}: {content}\n")
+                    f.write(f"[{timestamp}] {author}: {content}\n")
 
                         if message.attachments:
                             for attachment in message.attachments:
